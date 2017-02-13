@@ -1,6 +1,6 @@
 import java.util.Scanner;
 import java.util.List;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.BufferedWriter;
@@ -37,7 +37,7 @@ public class IOManager
 	private static String[] readFile(String path) throws IOException
 	{
 		Scanner input = new Scanner(new File(path));
-		List<String> file = new ArrayList<String>();
+		List<String> file = new LinkedList<String>();
 
 		while (input.hasNext())
 			file.add(input.nextLine());
