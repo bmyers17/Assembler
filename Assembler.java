@@ -9,6 +9,20 @@ public class Assembler
 	private static final char COMMENT = '#';
 	private static final String LABEL = "label";
 	private static final String CURRENT = "here";
+	
+	private static String[] assemble(String[] initFile)
+	{
+		initFile = clean(initFile);
+		String[][] file = tokenize(initFile);
+		
+		HashMap<String, String> variables = new HashMap<String, String>();
+		file = stripVars(file, variables);
+	}
+	
+	private static String[] unpack(String[][] file)
+	{
+		
+	}
 
 	private static String[] clean(String[] file)
 	{
@@ -61,5 +75,9 @@ public class Assembler
 		}
 
 		return stripped.toArray(new String[stripped.size()][]);
+	}
+	
+	private static boolean machineFriendly(String[] instruction)
+	{
 	}
 }
