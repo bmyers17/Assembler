@@ -1,8 +1,11 @@
 import java.util.Scanner;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.HashMap;
+import java.util.TreeSet;
 
 public class Assembler
 {
@@ -13,25 +16,31 @@ public class Assembler
 	private static final char ARGUMENT = '&';
 	private static final String ASSEMBLER = "@assembler";
 	private static final String LOAD = "LOD";
-	private static final String L = 'L';
+	private static final char L = 'L';
+	private static final String MACRO = "macro";
+	private static final String END = "end";
 	private static final String machineFile = "machine.txt";
 	private static final String macroFile = "macros.txt";
 	
-	private static List<String> supported;
+	private static Set<String> supported;
 	private static HashMap<String, String> variables;
-	private static HashMap<String[], String[][]> macros;
+	private static HashMap<String, String[][]> macros;
 	
 	private static int id = 0;
+	private static int location;
 	
-	private static String[] assemble(String[] initFile)
+	public static String[][] assemble(String[] initFile)
 	{
 		initFile = clean(initFile);
 		String[][] file = tokenize(initFile);
 		
+		location = getLocation(file);
 		variables = new HashMap<String, String>();
-		file = stripVars(file, variables);
+		file = stripVars(file);
+
+		addMacros(file);
 		
-		return interpret(prepare(file));
+		return prepare(file);
 	}
 
 	private static String[] clean(String[] file)
@@ -72,46 +81,78 @@ public class Assembler
 		return tokenized;
 	}
 
-	private static String[][] stripVars(String[][] file, HashMap<String, String> map)
+	private static int getLocation(String[][] file)
+	{
+		return Integer.parseInt(file[0][0].substring(1), 16);
+	}
+
+	private static String[][] stripVars(String[][] file)
 	{
 		List<String[]> stripped = new LinkedList<String[]>();
 
 		for (String[] line : file)
 		{
 			if (line[0].equals(LABEL) && !line[3].equals(CURRENT))
-				map.put(line[1], line[3]);
+				variables.put(line[1], line[3]);
 			else
 				stripped.add(line);
 		}
 
 		return stripped.toArray(new String[stripped.size()][]);
 	}
-	
-	private static String[] prepare(String[][] file)
+
+	private static void addMacros(String[][] file)
 	{
-		supported = new TreeSet<String>(IOManager.read(machineFile));
+		List<String[]> macroCode = new LinkedList<String[]>(Arrays.asList(tokenize(IOManager.read(macroFile))));
+
+		int index = 0;
+		boolean inMacro = false;
+		String name = "";
+		List<String[]> currentMacro = new LinkedList<String[]>();
+
+		while (index < file.length && (inMacro || file[index][0].equals(MACRO)))
+		{
+			if (file[index][0].equals(MACRO))
+			{
+				inMacro = true;
+				name = file[index][1];
+			}
+			else if (file[index][0].equals(END))
+			{
+				inMacro = false;
+				macros.put(name, currentMacro.toArray(new String[currentMacro.size()][]));
+				currentMacro = new LinkedList<String[]>();
+			}
+			else
+				currentMacro.add(file[index]);
+		}
+
+	}
+	
+	private static String[][] prepare(String[][] file)
+	{
+		supported = new TreeSet<String>(Arrays.asList(IOManager.read(machineFile)));
 		
-		List<String[]> packed = new LinkedList<String[]>(file);
+		List<String[]> packed = new LinkedList<String[]>(Arrays.asList(file));
 		List<String[]> unpacked = new LinkedList<String[]>();
+		List<String[]> ready = new LinkedList<String[]>();
 		List<String[]> machineReady = new LinkedList<String[]>();
 		
 		resolveMacros(packed, unpacked);
 		resolveVariables(unpacked);
-		resolveMachine(unpacked, machineReady);
+		resolveMachine(unpacked, ready);
+		resolveAddresses(ready);
 		resolveVariables(machineReady);
 		
-		while (!packed.isEmpty())
-			unpackLine(packed.remove(0), packed, unpacked, supported);
-		
-		return unpacked.toArray(new String[unpacked.size()][]);
+		return machineReady.toArray(new String[machineReady.size()][]);
 	}
 			      
 	private static void resolveMacros(List<String[]> packed, List<String[]> unpacked)
 	{
 		if (packed.isEmpty())
-			return unpacked;
+			return;
 		
-		line = packed.remove(0);
+		String[] line = packed.remove(0);
 		
 		if (!macros.containsKey(line[0]))
 			unpacked.add(line);
@@ -124,12 +165,12 @@ public class Assembler
 			
 			for (int k = 0; k < macro.length; k++)
 				for (int j = 0; j < macro[k].length; j++)
-					if (macro[k][j].charAt(0) = ARGUMENT)
+					if (macro[k][j].charAt(0) == ARGUMENT)
 						macro[k][j] += "_" + id;
 			id++;
 			
 			for (int k = macro.length - 1; k >= 0; k--)
-				packed.add(macro[k], 0);
+				packed.add(0, macro[k]);
 		}
 		
 		resolveMacros(packed, unpacked);
@@ -149,6 +190,23 @@ public class Assembler
 		fixNumbers(unpacked);
 		addLoads(unpacked, ready);
 	}
+
+	private static void resolveAddresses(List<String[]> ready)
+	{
+		List<String[]> machineReady = new LinkedList<String[]>();
+		int index = 0;
+
+		for (String[] line : ready)
+		{
+			if (line[0].equals(LABEL) && line[3] == CURRENT)
+				variables.put(line[1], "d" + (location + index));
+			else
+			{
+				machineReady.add(line);
+				index++;
+			}
+		}
+	}
 	
 	private static void fixNumbers(List<String[]> unpacked)
 	{
@@ -161,9 +219,9 @@ public class Assembler
 	{
 		for (String[] line : unpacked)
 		{
-			if (!line[0].equals(load) && line[1].charAt(0) == L)
+			if (!line[0].equals(LOAD) && line[1].charAt(0) == L)
 			{
-				ready.add(new String[2] {LOAD, ASSEMBLER, line[1].substring(1)});
+				ready.add(new String[] {LOAD, ASSEMBLER, line[1].substring(1)});
 				line[1] = ASSEMBLER;
 			}
 			
