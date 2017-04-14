@@ -21,26 +21,61 @@ public class Assembler
 	private static final String END = "end";
 	private static final String machineFile = "machine.txt";
 	private static final String macroFile = "macros.txt";
+	private static final String assembledFile = "assembled.txt";
 	
-	private static Set<String> supported;
 	private static HashMap<String, String> variables;
 	private static HashMap<String, String[][]> macros;
+	private static HashMap<String, String> machineCodes;
 	
 	private static int id = 0;
 	private static int location;
 	
-	public static String[][] assemble(String[] initFile)
+	public static List<String[]> assemble(String[] initFile)
 	{
+		machineCodes = new HashMap<String, String>();
+		initCodes(machineCodes);
+		
 		initFile = clean(initFile);
-		String[][] file = tokenize(initFile);
+		List<String[]> file = tokenize(initFile);
 		
 		location = getLocation(file);
 		variables = new HashMap<String, String>();
 		file = stripVars(file);
 
+		macros = new HashMap<String, String[][]>();
 		addMacros(file);
 		
-		return prepare(file);
+		file = prepare(file);
+		logAssembled(file);
+		return file;
+	}
+
+	public static void logAssembled(List<String[]> file)
+	{
+		String[] ready = new String[file.size()];
+
+		int k = 0;
+		for (String[] line : file)
+		{
+			for (int j = 0; j < line.length; j++)
+			{
+				if (j == 0)
+					ready[k] = "";
+				ready[k] += line[j] + " ";
+			}
+
+			k++;
+		}
+
+		IOManager.write(assembledFile, ready);
+	}
+
+	private static void initCodes(HashMap<String, String> codes)
+	{
+		List<String[]> file = tokenize(clean(IOManager.read(machineFile)));
+
+		for (String[] assignment : file)
+			codes.put(assignment[0], assignment[1]);
 	}
 
 	private static String[] clean(String[] file)
@@ -51,7 +86,7 @@ public class Assembler
 		{
 			String updatedLine = line.trim();
 
-			if (line.charAt(0) == COMMENT)
+			if (line.length() == 0 || line.charAt(0) == COMMENT)
 				line = "";
 
 			if (line.length() != 0)
@@ -61,32 +96,32 @@ public class Assembler
 		return cleaned.toArray(new String[cleaned.size()]);
 	}
 
-	private static String[][] tokenize(String[] file)
+	private static List<String[]> tokenize(String[] file)
 	{
-		String[][] tokenized = new String[file.length][];
+		LinkedList<String[]> tokenized = new LinkedList<String[]>();
 
-		for (int k = 0; k < file.length; k++)
+		for (String line : file)
 		{
 			List<String> tokens = new LinkedList<String>();
-			Scanner parser = new Scanner(file[k]);
+			Scanner parser = new Scanner(line);
 
 			while (parser.hasNext())
 				tokens.add(parser.next());
 
 			parser.close();
 
-			tokenized[k] = tokens.toArray(new String[tokens.size()]);
+			tokenized.add(tokens.toArray(new String[tokens.size()]));
 		}
 
 		return tokenized;
 	}
 
-	private static int getLocation(String[][] file)
+	private static int getLocation(List<String[]> file)
 	{
-		return Integer.parseInt(file[0][0].substring(1), 16);
+		return Integer.parseInt(file.remove(0)[0].substring(1), 16);
 	}
 
-	private static String[][] stripVars(String[][] file)
+	private static List<String[]> stripVars(List<String[]> file)
 	{
 		List<String[]> stripped = new LinkedList<String[]>();
 
@@ -98,42 +133,47 @@ public class Assembler
 				stripped.add(line);
 		}
 
-		return stripped.toArray(new String[stripped.size()][]);
+		return stripped;
 	}
 
-	private static void addMacros(String[][] file)
+	private static void addMacros(List<String[]> file)
 	{
-		List<String[]> macroCode = new LinkedList<String[]>(Arrays.asList(tokenize(IOManager.read(macroFile))));
+		List<String[]> macroCode = tokenize(IOManager.read(macroFile));
 
-		int index = 0;
 		boolean inMacro = false;
+
+		while (inMacro || file.get(0)[0].equals(MACRO))
+		{
+			if (file.get(0)[0].equals(END))
+				inMacro = false;
+			else if (file.get(0)[0].equals(MACRO))
+				inMacro = true;
+
+			macroCode.add(file.remove(0));
+		}
+
 		String name = "";
 		List<String[]> currentMacro = new LinkedList<String[]>();
 
-		while (index < file.length && (inMacro || file[index][0].equals(MACRO)))
+		while (!macroCode.isEmpty())
 		{
-			if (file[index][0].equals(MACRO))
-			{
-				inMacro = true;
-				name = file[index][1];
-			}
-			else if (file[index][0].equals(END))
-			{
-				inMacro = false;
-				macros.put(name, currentMacro.toArray(new String[currentMacro.size()][]));
-				currentMacro = new LinkedList<String[]>();
-			}
-			else
-				currentMacro.add(file[index]);
-		}
+			String[] line = macroCode.remove(0);
 
+			if (line[0].equals(MACRO))
+			{
+				currentMacro = new LinkedList<String[]>();
+				name = line[1];
+			}
+			else if (line[0].equals(END))
+				macros.put(name, currentMacro.toArray(new String[currentMacro.size()][]));
+			else
+				currentMacro.add(line);
+		}
 	}
 	
-	private static String[][] prepare(String[][] file)
-	{
-		supported = new TreeSet<String>(Arrays.asList(IOManager.read(machineFile)));
-		
-		List<String[]> packed = new LinkedList<String[]>(Arrays.asList(file));
+	private static List<String[]> prepare(List<String[]> file)
+	{		
+		List<String[]> packed = file;
 		List<String[]> unpacked = new LinkedList<String[]>();
 		List<String[]> ready = new LinkedList<String[]>();
 		List<String[]> machineReady = new LinkedList<String[]>();
@@ -142,9 +182,9 @@ public class Assembler
 		resolveVariables(unpacked);
 		resolveMachine(unpacked, ready);
 		resolveAddresses(ready);
-		resolveVariables(machineReady);
-		
-		return machineReady.toArray(new String[machineReady.size()][]);
+		resolveVariables(ready);
+
+		return ready;
 	}
 			      
 	private static void resolveMacros(List<String[]> packed, List<String[]> unpacked)
@@ -154,13 +194,13 @@ public class Assembler
 		
 		String[] line = packed.remove(0);
 		
-		if (!macros.containsKey(line[0]))
+		if (machineCodes.containsKey(line[0]))
 			unpacked.add(line);
 		else
 		{
 			for (int k = 1; k < line.length; k++)
 				variables.put(ARGUMENT + "" + k + "_" + id, line[k]);
-			
+		
 			String[][] macro = copy(macros.get(line[0]));
 			
 			for (int k = 0; k < macro.length; k++)
@@ -259,5 +299,11 @@ public class Assembler
 		}
 		
 		return copied;
+	}
+
+	private static void print(List<String[]> file)
+	{
+		for (String[] line : file)
+			System.out.println(Arrays.toString(line));
 	}
 }

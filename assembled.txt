@@ -1,0 +1,3 @@
+MOVA @testa 
+MOVB @testb 
+ADD @testc 
