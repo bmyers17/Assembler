@@ -10,7 +10,7 @@ import java.util.TreeSet;
 public class Assembler
 {
 	private static final char COMMENT = '#';
-	private static final String LABEL = "label";
+	private static final String LABEL = "let";
 	private static final String CURRENT = "here";
 	private static final char REGISTER = '@';
 	private static final char ARGUMENT = '&';
@@ -34,7 +34,7 @@ public class Assembler
 	{
 		machineCodes = new HashMap<String, String>();
 		initCodes(machineCodes);
-		
+
 		initFile = clean(initFile);
 		List<String[]> file = tokenize(initFile);
 		
@@ -189,31 +189,31 @@ public class Assembler
 			      
 	private static void resolveMacros(List<String[]> packed, List<String[]> unpacked)
 	{
-		if (packed.isEmpty())
-			return;
-		
-		String[] line = packed.remove(0);
-		
-		if (machineCodes.containsKey(line[0]))
-			unpacked.add(line);
-		else
+		while (!packed.isEmpty())
 		{
-			for (int k = 1; k < line.length; k++)
-				variables.put(ARGUMENT + "" + k + "_" + id, line[k]);
 		
-			String[][] macro = copy(macros.get(line[0]));
+			String[] line = packed.remove(0);
+		
+			if (machineCodes.containsKey(line[0]))
+				unpacked.add(line);
+			else
+			{
+				for (int k = 1; k < line.length; k++)
+					variables.put(ARGUMENT + "" + k + "_" + id, line[k]);
+				
+				System.out.println(line[0]);
+				String[][] macro = copy(macros.get(line[0]));
 			
-			for (int k = 0; k < macro.length; k++)
-				for (int j = 0; j < macro[k].length; j++)
-					if (macro[k][j].charAt(0) == ARGUMENT)
-						macro[k][j] += "_" + id;
-			id++;
+				for (int k = 0; k < macro.length; k++)
+					for (int j = 0; j < macro[k].length; j++)
+						if (macro[k][j].charAt(0) == ARGUMENT)
+							macro[k][j] += "_" + id;
+				id++;
 			
-			for (int k = macro.length - 1; k >= 0; k--)
-				packed.add(0, macro[k]);
+				for (int k = macro.length - 1; k >= 0; k--)
+					packed.add(0, macro[k]);
+			}
 		}
-		
-		resolveMacros(packed, unpacked);
 	}
 
 	
@@ -259,7 +259,7 @@ public class Assembler
 	{
 		for (String[] line : unpacked)
 		{
-			if (!line[0].equals(LOAD) && line[1].charAt(0) == L)
+			if (!line[0].equals(LOAD))
 			{
 				ready.add(new String[] {LOAD, ASSEMBLER, line[1].substring(1)});
 				line[1] = ASSEMBLER;

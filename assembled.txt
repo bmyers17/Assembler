@@ -1,3 +1,10 @@
-MOVA @testa 
-MOVB @testb 
-ADD @testc 
+LOD @assembler testa 
+MOVA @assembler 
+LOD @assembler testb 
+MOVB @assembler 
+LOD @assembler 1_1 
+MOVA @assembler 
+LOD @assembler 2_1 
+MOVB @assembler 
+LOD @assembler testc 
+ADD @assembler 
