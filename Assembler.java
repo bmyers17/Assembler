@@ -25,22 +25,19 @@ public class Assembler
 	
 	private static HashMap<String, String> variables;
 	private static HashMap<String, String[][]> macros;
-	private static HashMap<String, String> machineCodes;
 	
 	private static int id = 0;
 	private static int location;
 	
 	public static List<String[]> assemble(String[] initFile)
 	{
-		machineCodes = new HashMap<String, String>();
-		initCodes(machineCodes);
+		variables = new HashMap<String, String>();
+		initCodes();
 
 		initFile = clean(initFile);
 		List<String[]> file = tokenize(initFile);
 		
 		location = getLocation(file);
-		variables = new HashMap<String, String>();
-		file = stripVars(file);
 
 		macros = new HashMap<String, String[][]>();
 		addMacros(file);
@@ -70,12 +67,12 @@ public class Assembler
 		IOManager.write(assembledFile, ready);
 	}
 
-	private static void initCodes(HashMap<String, String> codes)
+	private static void initCodes()
 	{
 		List<String[]> file = tokenize(clean(IOManager.read(machineFile)));
 
 		for (String[] assignment : file)
-			codes.put(assignment[0], assignment[1]);
+			variables.put(assignment[0], assignment[1]);
 	}
 
 	private static String[] clean(String[] file)
@@ -173,18 +170,18 @@ public class Assembler
 	
 	private static List<String[]> prepare(List<String[]> file)
 	{		
-		List<String[]> packed = file;
 		List<String[]> unpacked = new LinkedList<String[]>();
 		List<String[]> ready = new LinkedList<String[]>();
 		List<String[]> machineReady = new LinkedList<String[]>();
-		
-		resolveMacros(packed, unpacked);
+
+		resolveMacros(file, unpacked);
+		unpacked = stripVars(unpacked);
 		resolveVariables(unpacked);
 		resolveMachine(unpacked, ready);
-		resolveAddresses(ready);
-		resolveVariables(ready);
+		resolveAddresses(ready, machineReady);
+		resolveVariables(machineReady);
 
-		return ready;
+		return machineReady;
 	}
 			      
 	private static void resolveMacros(List<String[]> packed, List<String[]> unpacked)
@@ -193,15 +190,14 @@ public class Assembler
 		{
 		
 			String[] line = packed.remove(0);
-		
-			if (machineCodes.containsKey(line[0]))
+
+			if (!macros.containsKey(line[0]))
 				unpacked.add(line);
 			else
 			{
 				for (int k = 1; k < line.length; k++)
 					variables.put(ARGUMENT + "" + k + "_" + id, line[k]);
 				
-				System.out.println(line[0]);
 				String[][] macro = copy(macros.get(line[0]));
 			
 				for (int k = 0; k < macro.length; k++)
@@ -223,6 +219,15 @@ public class Assembler
 			for (int k = 1; k < line.length; k++)
 				if (variables.containsKey(line[k]))
 					line[k] = variables.get(line[k]);
+
+		boolean moreResolving = false;
+		for (String[] line : file)
+			for (int k = 1; k < line.length; k++)
+				if (variables.containsKey(line[k]))
+					moreResolving = true;
+
+		if (moreResolving)
+			resolveVariables(file);
 	}
 	
 	private static void resolveMachine(List<String[]> unpacked, List<String[]> ready)
@@ -231,19 +236,21 @@ public class Assembler
 		addLoads(unpacked, ready);
 	}
 
-	private static void resolveAddresses(List<String[]> ready)
+	private static void resolveAddresses(List<String[]> ready, List<String[]> machineReady)
 	{
-		List<String[]> machineReady = new LinkedList<String[]>();
 		int index = 0;
 
 		for (String[] line : ready)
 		{
-			if (line[0].equals(LABEL) && line[3] == CURRENT)
+			if (line[0].equals(LABEL) && line[3].equals(CURRENT))
 				variables.put(line[1], "d" + (location + index));
 			else
 			{
 				machineReady.add(line);
 				index++;
+
+				if (line[0].equals(LOAD))
+					index++;
 			}
 		}
 	}
@@ -259,9 +266,9 @@ public class Assembler
 	{
 		for (String[] line : unpacked)
 		{
-			if (!line[0].equals(LOAD))
+			if (!line[0].equals(LOAD) && line[1].charAt(0) == L)
 			{
-				ready.add(new String[] {LOAD, ASSEMBLER, line[1].substring(1)});
+				ready.add(new String[] {LOAD, ASSEMBLER, expand(line[1].substring(1))});
 				line[1] = ASSEMBLER;
 			}
 			
@@ -285,6 +292,14 @@ public class Assembler
 			return number;
 		
 		return L + Integer.toString(value, 2);
+	}
+
+	private static String expand(String s)
+	{
+		while (s.length() < 8)
+			s = "0" + s;
+
+		return s;
 	}
 			      
 	private static String[][] copy(String[][] arr)

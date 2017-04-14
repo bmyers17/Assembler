@@ -1,4 +1,1 @@
 @0000
-TEST @testa @testb
-let hello = @testb
-ADD2 @testc hello @testc

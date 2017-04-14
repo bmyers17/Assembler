@@ -1,10 +1,5 @@
-LOD @assembler testa 
+LOD @assembler 00000001 
 MOVA @assembler 
-LOD @assembler testb 
+LOD @assembler 00000010 
 MOVB @assembler 
-LOD @assembler 1_1 
-MOVA @assembler 
-LOD @assembler 2_1 
-MOVB @assembler 
-LOD @assembler testc 
-ADD @assembler 
+BEQ d6 

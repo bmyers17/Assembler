@@ -8,6 +8,19 @@ FCH		1010
 NND		1100
 ADD		1110
 
-@testa 0000
-@testb 0001
-@testc 0010
+@zero 	0000
+@s0		0001
+@s1		0010
+@s2		0011
+@s3		0100
+@ar     0101
+@inb	0110
+@ina	0111
+@adrs0	1000
+@adrs1	1001
+@mem0	1010
+@mem1	1011
+@outa	1100
+@outb	1101
+@alua	1110
+@alub	1111

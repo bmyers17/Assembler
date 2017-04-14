@@ -1,8 +1,0 @@
-macro TEST
-MOVA &1
-MOVB &2
-end
-macro ADD2
-TEST &1 &2
-ADD &3
-end
