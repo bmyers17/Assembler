@@ -1,5 +1,5 @@
-LOD @assembler 00000001 
-MOVA @assembler 
-LOD @assembler 00000010 
-MOVB @assembler 
-BEQ d6 
+MOVA L10100000 
+MOVB @s2 
+ADD @s3 
+LOD @adrs0 d3 
+BEQ @s2 

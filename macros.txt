@@ -1,0 +1,13 @@
+macro MOVE
+MOVA &1
+MOVB @zero
+ADD &2
+end
+macro test
+ADD &1
+end
+macro ADD2
+MOVA &1
+MOVB &2
+test &3
+end

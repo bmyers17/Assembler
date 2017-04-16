@@ -32,7 +32,6 @@ public class Assembler
 	public static List<String[]> assemble(String[] initFile)
 	{
 		variables = new HashMap<String, String>();
-		initCodes();
 
 		initFile = clean(initFile);
 		List<String[]> file = tokenize(initFile);
@@ -43,8 +42,8 @@ public class Assembler
 		addMacros(file);
 		
 		file = prepare(file);
-		logAssembled(file);
-		return file;
+
+		return translate(file);
 	}
 
 	public static void logAssembled(List<String[]> file)
@@ -180,6 +179,11 @@ public class Assembler
 		resolveMachine(unpacked, ready);
 		resolveAddresses(ready, machineReady);
 		resolveVariables(machineReady);
+		
+		logAssembled(machineReady);
+		initCodes();
+
+		resolveVariables(machineReady);
 
 		return machineReady;
 	}
@@ -215,25 +219,26 @@ public class Assembler
 	
 	private static void resolveVariables(List<String[]> file)
 	{
-		for (String[] line : file)
-			for (int k = 1; k < line.length; k++)
-				if (variables.containsKey(line[k]))
-					line[k] = variables.get(line[k]);
-
 		boolean moreResolving = false;
-		for (String[] line : file)
-			for (int k = 1; k < line.length; k++)
-				if (variables.containsKey(line[k]))
-					moreResolving = true;
+		do
+		{
+			for (String[] line : file)
+				for (int k = 1; k < line.length; k++)
+					if (variables.containsKey(line[k]))
+						line[k] = variables.get(line[k]);
 
-		if (moreResolving)
-			resolveVariables(file);
+			moreResolving = false;
+			for (String[] line : file)
+				for (int k = 1; k < line.length; k++)
+					if (variables.containsKey(line[k]))
+						moreResolving = true;
+		} while(moreResolving);
 	}
 	
 	private static void resolveMachine(List<String[]> unpacked, List<String[]> ready)
 	{
-		fixNumbers(unpacked);
 		addLoads(unpacked, ready);
+		fixNumbers(ready);
 	}
 
 	private static void resolveAddresses(List<String[]> ready, List<String[]> machineReady)
@@ -253,6 +258,11 @@ public class Assembler
 					index++;
 			}
 		}
+	}
+
+	private static List<String[]> translate(Object file)
+	{
+		return null;
 	}
 	
 	private static void fixNumbers(List<String[]> unpacked)

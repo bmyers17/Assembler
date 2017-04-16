@@ -1,1 +1,5 @@
 @0000
+ADD2 xa0 @s2 @s3
+let hello = here
+LOD @adrs0 hello
+BEQ @s2
