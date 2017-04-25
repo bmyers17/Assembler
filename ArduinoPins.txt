@@ -1,0 +1,19 @@
+1 - Reserved for serial communications
+2 - Reserved for serial communications
+3 - !OE on program memory
+4 - !WE on program memory
+5 - CP on program counter
+6 - !OE on address buffers
+7 - transition pulse for datapath
+8 - CP on program word register
+9 - Opcode input bit
+10 - Opcode input bit
+11 - Opcode input bit
+12 - shift register oe
+13 
+A0 - Reads clock potentiometer
+A1 - DS
+A2 - SH_CP
+A3 - ST_CP
+A4 - latches higher bits
+A5 - latches lower bits
